@@ -1,0 +1,423 @@
+.data
+mapa: .asciz "+------------------------------------------------+\n|               ****************                 |\n|               *** VIBORITA ***                 |\n|               ****************                 |\n+------------------------------------------------+\n|                                                |\n|                                                |\n|         @***                                   |\n|                                                |\n|                    M                           |\n|                                                |\n|                                                |\n|                                                |\n|                                                |\n+------------------------------------------------+\n| Puntaje:                      Nivel:           |\n+------------------------------------------------+\n"      @ \n enter
+longitud = . - mapa
+
+game_over: .asciz "+------------------------------------------------+\n|                                                |\n|         ******  *****  *** *** *******         |\n|        **      **   ** ******* **              |\n|        ** **** ******* ** * ** *******         |\n|        **   ** **   ** **   ** **              |\n|         *****  **   ** **   ** *******         |\n|                                                |\n|         *****  **   ** ******* ******          |\n|        **   ** **   ** **      **   **         |\n|        **   ** **   ** ******* *******         |\n|        **   **  *****  **      ** **           |\n|         *****     *    ******* **  **          |\n|                                                |\n|                                                |\n|       Puntaje:               Nivel:            |\n+------------------------------------------------+\n"      @ \n enter
+longitud_gameover= . -game_over
+
+manzana_x: .word 9, 12, 6, 12, 13, 10, 9, 10, 8, 13, 10, 8, 12
+manzana_y: .word 21, 5, 32, 4, 20, 5, 8, 43, 25, 15, 9, 23, 30
+
+indice_manzana: .word 0
+valor_inicial:	.word 0
+valor_agregado:	.word 1		/*cantidad de puntos que sumamos*/
+valor_acarreo:	.word 0		/*en caso de que tengamos mas de 9 puntos*/
+ubicacion_puntaje_final: .word	782
+ubicacion_puntaje: .word 776
+
+unidades_nivel:	.word 48
+ubicacion_nivel: .word	803
+
+cls: .asciz "\x1b[H\x1b[2J" @una manera de borrar la pantalla usando ansi escape codes
+lencls=.-cls
+
+mensaje: .ascii "Ingresar 1 caracter!:\n"
+fila:  .word 7
+columna:  .word 10         /*donde esta @ de la viborita*/
+
+filaanterior: .word 7
+columnaant: .word 10
+
+cadena:  .ascii " "
+
+
+.text    		 @ Defincion de codigo del programa
+
+abajo:
+.fnstart
+ldr r0, =fila
+ldr r4, [r0]
+ldr r1, =filaanterior
+str r4, [r1]
+add r4, #1
+str r4, [r0]
+ldr r0, =columna
+ldr r4, [r0]
+ldr r1, =columnaant
+str r4, [r1]
+
+bx lr
+.fnend
+
+izq:
+.fnstart
+ldr r0, =columna
+ldr r4, [r0]
+ldr r1, =columnaant
+str r4, [r1]
+sub r4, #1
+str r4, [r0]
+ldr r0, =fila
+ldr r4, [r0]
+ldr r1, =filaanterior
+str r4, [r1]
+bx lr
+.fnend
+
+der:
+.fnstart
+ldr r0, =columna
+ldr r4, [r0]
+ldr r1, =columnaant
+str r4, [r1]
+add r4, #1
+str r4, [r0]
+ldr r0, =fila
+ldr r4, [r0]
+ldr r1, =filaanterior
+str r4, [r1]
+bx lr
+.fnend
+
+arr:
+.fnstart
+ldr r0, =fila
+ldr r4, [r0]
+ldr r1, =filaanterior
+str r4, [r1]
+sub r4, #1
+str r4, [r0]
+ldr r0, =columna
+ldr r4, [r0]
+ldr r1, =columnaant
+str r4, [r1]
+
+bx lr
+.fnend
+
+imprimir:
+.fnstart
+    	mov r7, #4  	@ Salida por pantalla
+    	mov r0, #1  	@ salida cadena
+    	mov r2, #1  	@ Tamaño de la cadena
+    	ldr r1, =cadena
+    	swi 0       	@ swi, Software interrup
+	bx lr
+.fnend
+
+
+
+comprobar:
+.fnstart
+ldr r3, =mapa       @puntero al inicio de la matrix
+
+ldr r0, =fila	@fila
+ldr r0, [r0]
+ldr r1, =columna	@columna
+ldr r1, [r1]
+
+mov r4, #51          @ # total filas
+mul r4, r0, r4       @r4=numero de fila * tamaño de fila
+add r3,r4            @r3= puntero a la fila indicada en r0
+@desplazarme hacia la columna correcta
+add r3, r1  	@r3= puntero a fila + columna
+ldrb r2, [r3]
+
+/* manzana */
+cmp r2, #77	@ M
+beq agregar_manzana_en_mapa
+
+/* cuerpo */
+cmp r2, #42	@ *
+beq fin		/*GAME OVER*/
+
+/* pared */
+cmp r2, #45            @‘-’
+beq fin              /*GAME OVER*/
+cmp r2, #124          @‘|’
+beq fin		 /*GAME OVER*/
+
+bx lr
+.fnend
+
+
+
+
+obtenerNuevaPosicion:
+.fnstart
+ldr r3, =mapa       @puntero al inicio de la matrix
+
+@Parametros inputs: r0=fila, r1=columna, r2=char  
+
+@calculamos el indice a la fila solicitada
+	mov r4, #51          @ # total filas
+	mul r4, r0, r4       @r4=numero de fila * tamaño de fila
+	add r3,r4            @r3= puntero a la fila indicada en r0
+
+ @desplazarme hacia la columna correcta
+	add r3, r1  	@r3= puntero a fila + columna
+        strb r2, [r3]
+	bx lr
+.fnend
+
+agregar_manzana_en_mapa:
+
+	.fnstart
+/*r0=mapa r1=x r2=y*/
+
+	ldr r4,=indice_manzana
+	ldr r5,[r4]
+	add r5,#4
+	strb r5,[r4]
+
+	ldr r0,=mapa
+
+	ldr r3,=indice_manzana
+	ldr r3,[r3]
+
+	mov r4,#77   /*caracter*/
+	mov r5,#51   /*cantidad de columnas x fila*/
+
+	ldr r1,=manzana_x
+	add r1,r3		/*le indico el indice de manzana*/
+	ldr r1,[r1]
+
+	ldr r2,=manzana_y
+	add r2,r3		/*le indico el indice de manzana*/
+	ldr r2,[r2]
+
+	mul r1,r5  /*multiplico y por cantidad de columnas en fila*/
+	add r1,r2  /*le sumo la cantidad de columnas a moverme*/
+	add r0,r1
+
+	ldrb r1, [r0]
+	cmp r1,#42	/*revisamos que no este el cuerpo de la viborita en la direccion*/
+	bleq agregar_manzana_en_mapa
+
+	strb r4,[r0]	/*le asigno la M a la direccion*/
+
+	bal suma_puntaje
+	.fnend
+
+suma_puntaje:
+	.fnstart
+	ldr r1,=valor_inicial
+	ldr r1,[r1]
+
+	ldr r2,=valor_agregado		/*asignamos los valores de memoria a reg*/
+	ldr r2,[r2]
+
+	add r1,r2	/*hacemos la suma que nos piden*/
+	cmp r1,#10
+	bleq subrutina_iguales
+	ldr r4,=valor_inicial
+	strb r1,[r4]
+	cmp r1,#2
+	bleq suma_nivel
+	cmp r1,#4
+	bleq suma_nivel
+	cmp r1,#6
+	bleq suma_nivel
+	cmp r1,#8
+	bleq suma_nivel
+	bal guardar
+	.fnend
+
+subrutina_iguales:
+	.fnstart
+	mov r3,#0
+	ldr r4,=valor_inicial
+	strb r3,[r4]		/*le ponemos 0 al valor inicial*/
+
+	ldr r3,=valor_acarreo
+	ldr r3,[r3]
+	add r3,#1		/*le sumamos 1 al valor de acarreo*/
+
+	ldr r4,=valor_acarreo
+	strb r3,[r4]		/*cargamos el nuevo valor de acarreo*/
+
+	bl suma_nivel
+	.fnend
+
+suma_nivel:
+	.fnstart
+	ldr r3,=unidades_nivel
+	ldr r3,[r3]
+	add r3,#1		/*le sumamos 1 al valor de acarreo*/
+
+	ldr r4,=unidades_nivel
+	strb r3,[r4]		/*cargamos el nuevo valor de acarreo*/
+	bl guardar
+	.fnend
+
+guardar:
+	.fnstart
+		
+	ldr r0,	=unidades_nivel
+	ldr r0,[r0]
+
+	ldr r3,=valor_acarreo	@transformar a ascii los decimales de puntaje
+	ldr r3,[r3]
+	add r3,#48
+
+	ldr r2,=valor_inicial	@transformar a ascii los unidades de puntaje
+	ldr r2,[r2]
+	add r2, #48
+
+	ldr r1,=ubicacion_puntaje	@ubicar el puntaje en el mapa
+	ldr r1,[r1]
+	ldr r4,=mapa
+
+	add r4, r1	@guardar decimales de puntaje
+	strb r3,[r4]
+
+	add r4, #1	@guardar unidades de puntaje
+	strb r2, [r4]
+
+	ldr r1,=ubicacion_nivel	@ubicar el puntaje en el mapa
+	ldr r1,[r1]
+	ldr r4,=mapa
+
+	add r4, r1	@guardar unidades de nivel
+	strb r0,[r4]
+
+
+	bal posicionviborita
+
+	.fnend
+	
+
+.global main   	 @ global, visible en todo el programa
+
+main:
+
+
+mapa1:
+mov r7, #4    @Salida por pantalla
+mov r0, #1    @Indicamos a swi que sera una cadena
+ldr r2, =lencls   @Tamaño de la cadena
+ldr r1, =cls   @Cargamos en r1 la direccion del mensaje
+swi 0    @swi, Software interrup
+
+mov r7, #4    @Salida por pantalla
+mov r0, #1    @Indicamos a swi que sera una cadena
+ldr r2, =longitud   @Tamaño de la cadena
+ldr r1, =mapa   @Cargamos en r1 la direccion del mensaje
+swi 0    @swi, Software interrup
+
+
+imprimirporpantalla:
+    	@Imprimir por pantalla "Ingresa 1 caracter!:"
+        mov r7, #4  	@ Salida por pantalla
+    	mov r0, #1  	@ salida cadena
+    	mov r2, #22 	@ Tamaño de la cadena
+    	ldr r1, =mensaje
+    	swi 0       	@ swi, Software interrup
+
+input:
+    	@Leer el input del usuario
+    mov r7, #3    @ Lectura x teclado
+    mov r0, #0  	@ Ingreso de cadena
+    mov r2, #1    @ Leer # caracteres
+    ldr r1, =cadena @ donde se guarda la cadena ingresada
+    swi 0   	 @ swi, Software interrup
+
+
+/* direccion */		@se modifica fila o columna
+ldr r1, =cadena
+ldr r1, [r1]
+cmp r1, #97	@a
+bleq izq
+cmp r1, #115	@s
+bleq abajo
+cmp r1, #119	@w
+bleq arr
+cmp r1, #100	@d
+bleq der
+
+
+/* comprobar */
+bl comprobar
+
+
+/* mover viborita */
+posicionviborita:
+ldr r0, =fila
+ldr r0, [r0]
+ldr r1, =columna
+ldr r1, [r1]
+mov r2, #64  @arroba
+bl obtenerNuevaPosicion
+
+posicioncuerpo:
+ldr r0, =filaanterior
+ldr r0, [r0]
+ldr r1, =columnaant
+ldr r1, [r1]
+mov r2, #42  @*
+bl obtenerNuevaPosicion
+
+
+mapa2:
+mov r7, #4    @Salida por pantalla
+mov r0, #1    @Indicamos a swi que sera una cadena
+ldr r2, =lencls   @Tamaño de la cadena
+ldr r1, =cls   @Cargamos en r1 la direccion del mensaje
+swi 0    @swi, Software interrup
+
+mov r7, #4    @Salida por pantalla
+mov r0, #1    @Indicamos a swi que sera una cadena
+ldr r2, =longitud   @Tamaño de la cadena
+ldr r1, =mapa   @Cargamos en r1 la direccion del mensaje
+swi 0    @swi, Software interrup
+
+bl imprimirporpantalla
+
+fin:
+
+mov r7, #4    @Salida por pantalla
+mov r0, #1    @Indicamos a swi que sera una cadena
+ldr r2, =lencls   @Tamaño de la cadena
+ldr r1, =cls   @Cargamos en r1 la direccion del mensaje
+swi 0    @swi, Software interrup
+
+/* posición puntaje y nivel final */
+ldr r3, =game_over	@puntero al inicio de la matrix
+
+ldr r0, =ubicacion_puntaje_final	
+ldr r0, [r0]
+	
+add r3, r0	@posicion de puntos en r3
+ldr r1, =valor_acarreo
+ldrb r1, [r1]
+add r1,#48
+strb r1, [r3]
+
+add r3, #1	@posicion de puntos en r3
+ldr r1, =valor_inicial
+ldrb r1, [r1]
+add r1,#48
+strb r1, [r3]
+
+
+
+/* posición nivel  */
+ldr r3, =game_over	@puntero al inicio de la matrix
+ldr r2, =ubicacion_nivel	@puntero
+ldr r2, [r2]	
+add r3, r2	@posicion de puntos en r3
+ldr r1, =unidades_nivel
+ldrb r1, [r1]
+strb r1, [r3]
+
+
+mov r7, #4    @Salida por pantalla
+mov r0, #1    @Indicamos a swi que sera una cadena
+ldr r2, =longitud_gameover   @Tamaño de la cadena
+ldr r1, =game_over   @Cargamos en r1 la direccion del mensaje
+swi 0    @swi, Software interrup
+
+
+    mov r7, #1    @ Salida al sistema
+    swi 0
+
