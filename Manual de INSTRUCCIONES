@@ -1,0 +1,116 @@
+-Utilizamos un emulador quemu Rasberry (Raspbian GNU/Linux)
+-Es recomendable usar tambien WinSCP para transferir archivos del emulador a nuestro escritorio y viceversa
+
+*Login: pi
+*contraseña: raspberry
+
+INSTRUCCIONES IMPORTANTES:
+
+pwd (nos muestra el directorio en el que estamos posicionados).
+mkdir ejemplo (Crea un directorio en la posicion actual con el nombre "ejemplo").
+cd ejemplo (elegimos posicionarnos en el directorio "ejemplo")
+ls (lista los archivos contenidos en el directorio en el cual estamos posicionados)
+-a (listamos los elementos ocultos / se utiliza despues de la instruccion ls)
+-l (listamos el contenido detallado / se utiiza despues de la instruccion ls)
+sudo shutdown -h now (salimos del emulador)
+
+INSTRUCCIONES PARA LA CREACION DE EJECUTABLE:
+
+nano ejemplo.s (creamos un editor de texto con el nombre "ejemplo" / donde pondremos nuestro codigo / esta instruccion sirve para modificarlo tambien)
+as -g ejemplo.s -o ejemplo.o (guardamos nuevo codigo)
+gcc -Wall -o ejemplo ejemplo.o (codificar el codigo / traducir)
+./ejemplo (ejecutar el codigo)
+
+INSTRUCCIONES PARA DEBUGGER:
+
+gdb -tui ./ejemplo (ejecutamos el debugger del archivo "ejemplo")
+start (se utiliza una vez dentro para comenzar a visualizar las instrucciones)
+run (iniciar hasta llegar a un breakdown)
+layout reg (nos crea un sector donde veremos los cambios de valores en los registros)
+s (siguiente instruccion)
+i r r0 (vemos el valor que tiene el registro "r0" / podemos revisar todos los registros con esta instruccion, incluyendo los CPSR )
+quit (nos salimos del debugger)
+
+FORMATO PARA LA CREACION DEL CODIGO:
+
+.data
+      (aqui guardamos las etiquetas con sus valores de los espacios que ocuparemos en memoria)
+.text
+      (aqui guardaremos las subrutinas del codigo)
+.global main
+      (aqui crearemos el codigo main)
+      
+
+INSTRUCCIONES PARA LA CREACION DE CODIGO:
+
+***.data***
+
+ejemplo1: .word 123  (creamos un nuevo espacio en memoria llamado "ejemplo1", con el valor decimal 123)
+ejemplo2: .word 0xa  (creamos un nuevo espacio en memoria llamado "ejemplo2", con el valor hexadecimal A)
+ejemplo3: .asciz "abc/n"  (creamos un nuevo espacio en memoria llamado "ejemplo3", con el valor en codigo ascii de los caracteres "abc"/ el "/n" nos sirve para imprimir un enter, lo cual no es necesario).
+ejemplo4: .-ejemplo3  (creamos un nuevo espacio en memoria llamado "ejemplo4", donde guardaremos la longitud total de la cadena guardada en "ejemplo3" / en este caso, la longitud es de 5)
+
+
+***.text***
+
+subrutina_ejemplo:    (creamos una etiqueta con el nombre "subrutina_ejemplo")
+          .fnstart    (obligatorio en comienzo de subrutina)
+          ........    (ingresamos el codigo)
+          .fnend      (obligatorio en final de subrutina)
+          
+***.global main***
+
+main:   (creamos etiqueta con el nombre "main")
+
+  nop (esta instruccion no hace nada, consume un ciclo de reloj)
+  mov r0, #1 (le asignamos al registro r0 el valor 1)
+  ldr r1, =ejemplo1 (le asignamos al registro r1 el valor de la ubicacion en memoria en la que se encuentra nuestra  variable "ejemplo1" / usamos el registro de puntero)
+  ldr r2, [r1]  (le asignamos al registro r1 el valor "123", ya que revisamos la posicion en memoria que nos indica r1)
+  add r3, r0, r2 (le asignamos al registro r3 el valor de la suma entre el registro r0 y r2 / en este caso el resultado es 124)
+  str r3, [r1]  (cargamos el valor del registro r3 en la posicion de memoria a la que apunta r1 / en este ejemplo, cargamos 124 a "ejemolo1")
+  sub r4, r0, #1 (le asignamos al registro r4 el resultado de la resta entre el registro r0 y 1)
+  mul r1, #4 (le asignamos al registro r1 el valor de la multiplicacion de este mismo po 4)
+  cmp r0, #0 (comparamos el valor del registro r0 con 0 )
+  bleq suma  (si esta comparacion nos muestra que son equals, saltamos a la etiqueta "suma"/ SALTO CONDICONAL)
+  bal fin (salto incondicional hacia la etiqueta "fin")
+  
+suma:
+  pop {lr}  (guardamos en la pila el valor que contiene nuestro registro lr / el registro lr solo se utiliza para que el programa sepa de donde nos llamaron para saltar a esta etiqueta)
+  add r0,#2 (realizamos una suma)
+  push {lr} (usamos el valor guardado en la pila para el registro lr / lo sacamos de la pila)
+  bx lr (volvemos a la instruccion donde nos llamaron, usando el registro lr de referencia)
+  
+fin:             (creamos la etiqueta donde asignaremos las instrucciones para finalizar el programa)
+    mov r7,#1    @podemos hacer comentarios en el codigo de esta forma (usando el arroba)
+    swi 0        /*podemos hacer comentarios en el codigo de esta forma tambien*/
+    
+***OPCIONES DE SALTOS CONDICIONALES***
+
+eq = iguales (flag z set)
+ne = distintos (flag z clear)
+cs = mayor o igual sin signo (flag c set)
+cc = menor sin signo (flag c clear)
+mi = negativo (flag n set)
+pi = positivo o cero (flag n clear)
+vs = overflow (flag v set)
+vc = no overflow (flag v clear)
+hi = mayor sin signo (flags z clear / c set)
+ls = menor o igual sin signo  (flags c clear / z set)
+ge = mayor o igual  (flag n equals v)
+it = menor que  (flag n distinto de v)
+gt = mayor que  (flag z clear and n = v)
+le = mayor o igual que  (flag z set or n =! v)
+al = siempre (flags ignored)
+
+
+
+***REVISAR EL CUADERNO DE ORGANIZACION DEL COMPUTADOR PARA ENCONTRAR MAS INSTRUCCIONES***
+
+-multiplicaciones de 64 bits
+-imprimir en pantalla una matriz
+-modificar matriz
+-desplazamiento en matriz con instrucciones lsr y lsl
+-leer un input ingresado por usuario
+-limpiar pantalla
+-etc...
+
